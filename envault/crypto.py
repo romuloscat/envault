@@ -10,6 +10,7 @@ SALT_SIZE = 16
 NONCE_SIZE = 12
 KEY_SIZE = 32
 ITERATIONS = 390000
+MIN_TOKEN_SIZE = SALT_SIZE + NONCE_SIZE + 1
 
 
 def derive_key(password: str, salt: bytes) -> bytes:
@@ -41,8 +42,10 @@ def decrypt(token: str, password: str) -> str:
     except Exception as exc:
         raise ValueError("Invalid token format.") from exc
 
-    if len(raw) < SALT_SIZE + NONCE_SIZE + 1:
-        raise ValueError("Token is too short to be valid.")
+    if len(raw) < MIN_TOKEN_SIZE:
+        raise ValueError(
+            f"Token is too short to be valid (got {len(raw)} bytes, need at least {MIN_TOKEN_SIZE})."
+        )
 
     salt = raw[:SALT_SIZE]
     nonce = raw[SALT_SIZE:SALT_SIZE + NONCE_SIZE]
