@@ -52,3 +52,15 @@ def test_encrypt_unicode():
     text = "SECRET=café_naïve_日本語"
     token = encrypt(text, PASSWORD)
     assert decrypt(token, PASSWORD) == text
+
+
+@pytest.mark.parametrize("password", [
+    "short",
+    "a" * 64,
+    "p@$$w0rd!with#special&chars",
+    "   spaces   ",
+])
+def test_decrypt_roundtrip_various_passwords(password):
+    """Encryption/decryption works correctly across a range of password styles."""
+    token = encrypt(PLAINTEXT, password)
+    assert decrypt(token, password) == PLAINTEXT
