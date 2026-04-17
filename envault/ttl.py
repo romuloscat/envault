@@ -59,3 +59,14 @@ def purge_expired(vault_file: Path) -> list:
     data = _load_ttl(vault_file)
     now = time.time()
     return [k for k, exp in data.items() if now > exp]
+
+
+def time_remaining(vault_file: Path, key: str) -> Optional[float]:
+    """Return seconds remaining until a key expires, or None if no TTL is set.
+
+    Returns a negative value if the key has already expired.
+    """
+    expiry = get_expiry(vault_file, key)
+    if expiry is None:
+        return None
+    return expiry - time.time()
