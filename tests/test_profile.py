@@ -70,6 +70,10 @@ def test_export_profile(vault_file):
     assert result["DB_URL"] == "postgres://localhost"
     assert result["API_KEY"] == "abc123"
 
+def test_export_missing_profile_raises(vault_file):
+    with pytest.raises(ProfileError):
+        export_profile(vault_file, "nonexistent", PASSWORD)
+
 def test_get_profile_keys_missing_profile_raises(vault_file):
     with pytest.raises(ProfileError):
         get_profile_keys(vault_file, "nonexistent")
