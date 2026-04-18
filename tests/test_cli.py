@@ -64,3 +64,16 @@ def test_list_keys(runner):
     assert result.exit_code == 0
     assert "FOO" in result.output
     assert "BAR" in result.output
+
+
+def test_set_overwrites_existing_key(runner):
+    """Setting an existing key should update its value, not duplicate it."""
+    r, vault = runner
+    r.invoke(cli, ["set", "MY_KEY", "original", "--vault", vault, "--password", PASSWORD])
+    result = r.invoke(cli, ["set", "MY_KEY", "updated", "--vault", vault, "--password", PASSWORD])
+    assert result.exit_code == 0
+
+    result = r.invoke(cli, ["get", "MY_KEY", "--vault", vault, "--password", PASSWORD])
+    assert result.exit_code == 0
+    assert "updated" in result.output
+    assert "original" not in result.output
