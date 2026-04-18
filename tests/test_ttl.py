@@ -20,6 +20,15 @@ def test_set_and_get_expiry(vault_file):
     assert expiry > time.time()
 
 
+def test_set_ttl_expiry_is_approximately_correct(vault_file):
+    """Expiry should be roughly now + seconds."""
+    before = time.time()
+    set_ttl(vault_file, "KEY", 60)
+    after = time.time()
+    expiry = get_expiry(vault_file, "KEY")
+    assert before + 60 <= expiry <= after + 60
+
+
 def test_get_expiry_missing_key_returns_none(vault_file):
     assert get_expiry(vault_file, "MISSING") is None
 
@@ -63,6 +72,17 @@ def test_purge_expired_returns_expired_keys(vault_file):
     expired = purge_expired(vault_file)
     assert "DEAD" in expired
     assert "LIVE" not in expired
+
+
+def test_purge_expired_removes_keys_from_store(vault_file):
+    """After purge, expired keys should no longer appear in expiry data."""
+    from envault.ttl import _load_ttl, _save_ttl
+    set_ttl(vault_file, "DEAD", 1)
+    data = _load_ttl(vault_file)
+    data["DEAD"] = time.time() - 5
+    _save_ttl(vault_file, data)
+    purge_expired(vault_file)
+    assert get_expiry(vault_file, "DEAD") is None
 
 
 def test_set_ttl_invalid_raises(vault_file):
