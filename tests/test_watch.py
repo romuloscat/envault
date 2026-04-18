@@ -95,3 +95,16 @@ def test_watch_raises_on_bad_password(vault_file):
             interval=0,
             max_cycles=1,
         )
+
+
+def test_watch_raises_on_missing_vault_file(tmp_path):
+    """watch_and_run should raise WatchError when the vault file does not exist."""
+    missing = str(tmp_path / "nonexistent.vault")
+    with pytest.raises(WatchError, match="Failed to build env"):
+        watch_and_run(
+            missing,
+            ["echo"],
+            "password",
+            interval=0,
+            max_cycles=1,
+        )
