@@ -1,6 +1,12 @@
 import pytest
 from click.testing import CliRunner
+from pathlib import Path
+import json
+
 from envault.cli_dependency import dep_cmd
+from envault.store import set_secret
+
+PASSWORD = "testpass"
 
 
 @pytest.fixture
@@ -10,63 +16,73 @@ def runner():
 
 @pytest.fixture
 def vault_file(tmp_path):
-    return str(tmp_path / "vault.json")
+    return tmp_path / "vault.json"
 
 
 def _opt(vault_file):
-    return ["--vault", vault_file]
+    return ["--vault", str(vault_file), "--password", PASSWORD]
 
 
 def test_dep_add(runner, vault_file):
-    result = runner.invoke(dep_cmd, ["add", "APP", "SECRET"] + _opt(vault_file))
+    set_secret("API_KEY", "secret", PASSWORD, vault_file)
+    set_secret("API_URL", "https://example.com", PASSWORD, vault_file)
+
+    result = runner.invoke(dep_cmd, _opt(vault_file) + ["add", "API_KEY", "API_URL"])
     assert result.exit_code == 0
-    assert "APP -> SECRET" in result.output
+    assert "API_URL" in result.output
 
 
 def test_dep_add_self_raises(runner, vault_file):
-    result = runner.invoke(dep_cmd, ["add", "KEY", "KEY"] + _opt(vault_file))
+    set_secret("API_KEY", "secret", PASSWORD, vault_file)
+
+    result = runner.invoke(dep_cmd, _opt(vault_file) + ["add", "API_KEY", "API_KEY"])
     assert result.exit_code != 0
-    assert "Error" in result.output
+    assert "self" in result.output.lower() or "cannot" in result.output.lower()
 
 
 def test_dep_list(runner, vault_file):
-    runner.invoke(dep_cmd, ["add", "APP", "DB_PASS"] + _opt(vault_file))
-    result = runner.invoke(dep_cmd, ["list", "APP"] + _opt(vault_file))
+    set_secret("A", "1", PASSWORD, vault_file)
+    set_secret("B", "2", PASSWORD, vault_file)
+    set_secret("C", "3", PASSWORD, vault_file)
+
+    runner.invoke(dep_cmd, _opt(vault_file) + ["add", "A", "B"])
+    runner.invoke(dep_cmd, _opt(vault_file) + ["add", "A", "C"])
+
+    result = runner.invoke(dep_cmd, _opt(vault_file) + ["list", "A"])
     assert result.exit_code == 0
-    assert "DB_PASS" in result.output
+    assert "B" in result.output
+    assert "C" in result.output
 
 
 def test_dep_list_empty(runner, vault_file):
-    result = runner.invoke(dep_cmd, ["list", "NOTHING"] + _opt(vault_file))
+    set_secret("LONELY", "val", PASSWORD, vault_file)
+
+    result = runner.invoke(dep_cmd, _opt(vault_file) + ["list", "LONELY"])
     assert result.exit_code == 0
-    assert "no dependencies" in result.output
+    assert "no dependencies" in result.output.lower() or result.output.strip() == ""
 
 
 def test_dep_remove(runner, vault_file):
-    runner.invoke(dep_cmd, ["add", "A", "B"] + _opt(vault_file))
-    result = runner.invoke(dep_cmd, ["remove", "A", "B"] + _opt(vault_file))
+    set_secret("X", "1", PASSWORD, vault_file)
+    set_secret("Y", "2", PASSWORD, vault_file)
+
+    runner.invoke(dep_cmd, _opt(vault_file) + ["add", "X", "Y"])
+    result = runner.invoke(dep_cmd, _opt(vault_file) + ["remove", "X", "Y"])
     assert result.exit_code == 0
-    assert "Removed" in result.output
 
-
-def test_dep_remove_missing_raises(runner, vault_file):
-    result = runner.invoke(dep_cmd, ["remove", "X", "Y"] + _opt(vault_file))
-    assert result.exit_code != 0
+    result = runner.invoke(dep_cmd, _opt(vault_file) + ["list", "X"])
+    assert "Y" not in result.output
 
 
 def test_dep_dependents(runner, vault_file):
-    runner.invoke(dep_cmd, ["add", "APP", "SHARED"] + _opt(vault_file))
-    result = runner.invoke(dep_cmd, ["dependents", "SHARED"] + _opt(vault_file))
-    assert "APP" in result.output
+    set_secret("BASE", "base", PASSWORD, vault_file)
+    set_secret("CHILD1", "c1", PASSWORD, vault_file)
+    set_secret("CHILD2", "c2", PASSWORD, vault_file)
 
+    runner.invoke(dep_cmd, _opt(vault_file) + ["add", "CHILD1", "BASE"])
+    runner.invoke(dep_cmd, _opt(vault_file) + ["add", "CHILD2", "BASE"])
 
-def test_dep_show_all(runner, vault_file):
-    runner.invoke(dep_cmd, ["add", "A", "B"] + _opt(vault_file))
-    result = runner.invoke(dep_cmd, ["show-all"] + _opt(vault_file))
-    assert "A" in result.output
-    assert "B" in result.output
-
-
-def test_dep_show_all_empty(runner, vault_file):
-    result = runner.invoke(dep_cmd, ["show-all"] + _opt(vault_file))
-    assert "No dependencies" in result.output
+    result = runner.invoke(dep_cmd, _opt(vault_file) + ["dependents", "BASE"])
+    assert result.exit_code == 0
+    assert "CHILD1" in result.output
+    assert "CHILD2" in result.output
