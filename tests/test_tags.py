@@ -52,6 +52,12 @@ def test_tag_missing_key_raises(vault_file):
         tag_secret(vault_file, "MISSING_KEY", "sometag")
 
 
+def test_get_tags_missing_key_raises(vault_file):
+    """get_tags should raise TagError when the key does not exist in the vault."""
+    with pytest.raises(TagError, match="Key"):
+        get_tags(vault_file, "MISSING_KEY")
+
+
 def test_get_tags_no_tags_returns_empty(vault_file):
     assert get_tags(vault_file, "API_KEY") == []
 
