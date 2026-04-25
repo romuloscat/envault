@@ -41,6 +41,12 @@ def set_policy(vault_file: str, key: str, rules: dict[str, Any]) -> None:
     unknown = set(rules) - _VALID_RULES
     if unknown:
         raise PolicyError(f"Unknown rule(s): {', '.join(sorted(unknown))}")
+    if "min_length" in rules and "max_length" in rules:
+        if rules["min_length"] > rules["max_length"]:
+            raise PolicyError(
+                f"min_length ({rules['min_length']}) cannot exceed "
+                f"max_length ({rules['max_length']})"
+            )
     data = _load_policies(vault_file)
     data[key] = rules
     _save_policies(vault_file, data)
