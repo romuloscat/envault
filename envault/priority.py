@@ -65,6 +65,17 @@ def remove_priority(vault_path: str, key: str) -> None:
     _save_priorities(vault_path, data)
 
 
+def reset_priorities(vault_path: str) -> int:
+    """Remove all explicit priorities, reverting every key to the default.
+
+    Returns the number of priorities that were cleared.
+    """
+    data = _load_priorities(vault_path)
+    count = len(data)
+    _save_priorities(vault_path, {})
+    return count
+
+
 def list_by_priority(
     vault_path: str, keys: Optional[List[str]] = None
 ) -> List[Tuple[str, int]]:
